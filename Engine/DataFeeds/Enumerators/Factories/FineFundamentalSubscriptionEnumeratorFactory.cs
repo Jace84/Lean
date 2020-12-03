@@ -24,6 +24,7 @@ using QuantConnect.Data;
 using QuantConnect.Data.Fundamental;
 using QuantConnect.Data.UniverseSelection;
 using QuantConnect.Interfaces;
+using QuantConnect.Logging;
 
 namespace QuantConnect.Lean.Engine.DataFeeds.Enumerators.Factories
 {
@@ -62,6 +63,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds.Enumerators.Factories
         /// <returns>An enumerator reading the subscription request</returns>
         public IEnumerator<BaseData> CreateEnumerator(SubscriptionRequest request, IDataProvider dataProvider)
         {
+            Log.Trace($"CreateEnumerator: '{request.Configuration.Symbol}'. start...");
             using (var dataCacheProvider = new SingleEntryDataCacheProvider(dataProvider))
             {
                 var tradableDays = _tradableDaysProvider(request);
@@ -83,6 +85,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds.Enumerators.Factories
                     }
                 }
             }
+            Log.Trace($"CreateEnumerator: '{request.Configuration.Symbol}'. Ended.");
         }
 
         /// <summary>
@@ -91,10 +94,12 @@ namespace QuantConnect.Lean.Engine.DataFeeds.Enumerators.Factories
         /// </summary>
         private SubscriptionDataSource GetSource(FineFundamental fine, SubscriptionDataConfig config, DateTime date)
         {
+            Log.Trace($"GetSource for:'{config.Symbol}'. start...");
             var source = fine.GetSource(config, date, _isLiveMode);
 
             if (File.Exists(source.Source))
             {
+                Log.Trace($"GetSource for:'{config.Symbol}'. ended...");
                 return source;
             }
 
@@ -108,6 +113,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds.Enumerators.Factories
                 try
                 {
                     var path = Path.GetDirectoryName(source.Source) ?? string.Empty;
+                    Log.Trace($"availableDates for: '{path}'. start...");
                     availableDates = Directory.GetFiles(path, "*.zip")
                         .Select(
                             filePath =>
@@ -130,6 +136,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds.Enumerators.Factories
                         .Where(time => time != DateTime.MaxValue)
                         .OrderBy(x => x)
                         .ToList();
+                    Log.Trace($"availableDates for: '{path}'. End.");
                 }
                 catch
                 {
@@ -139,6 +146,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds.Enumerators.Factories
                         // only add to cache if not live mode
                         FineFilesCache[cacheKey.Value] = new List<DateTime>();
                     }
+                    Log.Trace($"GetSource for:'{config.Symbol}'. End.");
                     return source;
                 }
 
@@ -152,6 +160,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds.Enumerators.Factories
             // requested date before first date, return null source
             if (availableDates.Count == 0 || date < availableDates[0])
             {
+                Log.Trace($"GetSource for:'{config.Symbol}'. End.");
                 return source;
             }
             for (var i = availableDates.Count - 1; i >= 0; i--)
@@ -159,10 +168,12 @@ namespace QuantConnect.Lean.Engine.DataFeeds.Enumerators.Factories
                 // we iterate backwards ^ and find the first data point before 'date'
                 if (availableDates[i] <= date)
                 {
+                    Log.Trace($"GetSource for:'{config.Symbol}'. End.");
                     return fine.GetSource(config, availableDates[i], _isLiveMode);
                 }
             }
 
+            Log.Trace($"GetSource for:'{config.Symbol}'. End.");
             return source;
         }
     }
