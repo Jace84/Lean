@@ -78,21 +78,8 @@ namespace QuantConnect.Lean.Engine.DataFeeds.Enumerators.Factories
                     // but could happen when fine filtering custom universes
                     if (fineFundamentalForDate != null)
                     {
-                        yield return new FineFundamental
-                        {
-                            DataType = MarketDataType.Auxiliary,
-                            Symbol = request.Configuration.Symbol,
-                            Time = date,
-                            CompanyReference = fineFundamentalForDate.CompanyReference,
-                            SecurityReference = fineFundamentalForDate.SecurityReference,
-                            FinancialStatements = fineFundamentalForDate.FinancialStatements,
-                            EarningReports = fineFundamentalForDate.EarningReports,
-                            OperationRatios = fineFundamentalForDate.OperationRatios,
-                            EarningRatios = fineFundamentalForDate.EarningRatios,
-                            ValuationRatios = fineFundamentalForDate.ValuationRatios,
-                            AssetClassification = fineFundamentalForDate.AssetClassification,
-                            CompanyProfile = fineFundamentalForDate.CompanyProfile
-                        };
+                        fineFundamentalForDate.Time = date;
+                        yield return fineFundamentalForDate;
                     }
                 }
             }
@@ -111,12 +98,12 @@ namespace QuantConnect.Lean.Engine.DataFeeds.Enumerators.Factories
                 return source;
             }
 
-            var cacheKey = config.Symbol.Value.ToLowerInvariant().GetHashCode();
+            var cacheKey = _isLiveMode ? (int?) null : config.Symbol.Value.ToLowerInvariant().GetHashCode();
             List<DateTime> availableDates;
 
             // only use cache in backtest, since in live mode new fine files are added
             // we still didn't load available fine dates for this symbol
-            if (_isLiveMode || !FineFilesCache.TryGetValue(cacheKey, out availableDates))
+            if (_isLiveMode || !FineFilesCache.TryGetValue(cacheKey.Value, out availableDates))
             {
                 try
                 {
@@ -150,7 +137,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds.Enumerators.Factories
                     if (!_isLiveMode)
                     {
                         // only add to cache if not live mode
-                        FineFilesCache[cacheKey] = new List<DateTime>();
+                        FineFilesCache[cacheKey.Value] = new List<DateTime>();
                     }
                     return source;
                 }
@@ -158,7 +145,7 @@ namespace QuantConnect.Lean.Engine.DataFeeds.Enumerators.Factories
                 if (!_isLiveMode)
                 {
                     // only add to cache if not live mode
-                    FineFilesCache[cacheKey] = availableDates;
+                    FineFilesCache[cacheKey.Value] = availableDates;
                 }
             }
 
